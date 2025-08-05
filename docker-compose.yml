@@ -1,0 +1,93 @@
+########################################################################################
+#                       Easy way to deploy Postgres & SQL Server                       #
+########################################################################################
+
+
+
+########################################################################################
+networks:
+  analytics-network:
+    driver: bridge
+########################################################################################
+
+
+
+########################################################################################
+services:
+  postgres:
+    container_name: analytics-postgres-1
+    image: postgres:17
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: postgres
+    ports:
+      - "2345:5432"
+    volumes:
+      - postgres-dev-db-volume:/var/lib/postgresql/data
+      # - ./postgresql.conf:/etc/postgresql/postgresql.conf
+      # - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
+    # command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
+    networks:
+      - analytics-network
+
+  mssql:
+    container_name: analytics-mssql-1
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: always
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: P#ssword123
+    ports:
+      - 3341:1433
+    volumes:
+      - mssql-dev-db-volume:/var/lib/mssql/data
+    networks:
+      - analytics-network
+
+  mongo:
+    container_name: analytics-mongo-1
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: P#ssword123
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo-dev-db-volume:/var/lib/mongo/data
+    networks:
+      - analytics-network
+
+  mongo-express:
+    container_name: analytics-mongo-express-1
+    image: mongo-express
+    restart: always
+    ports:
+      - 8020:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: P#ssword123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:P#ssword123@mongo:27017/
+      ME_CONFIG_BASICAUTH: true # Enable Authentication
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: tgbi123
+    depends_on:
+      - mongo
+########################################################################################
+
+
+
+########################################################################################
+volumes:
+  postgres-dev-db-volume:
+  mssql-dev-db-volume:
+  mongo-dev-db-volume:
+########################################################################################
+
+
+
+# References
+# https://hub.docker.com/_/postgres
+# https://hub.docker.com/r/microsoft/mssql-server 
