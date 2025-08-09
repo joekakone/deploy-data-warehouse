@@ -1,46 +1,32 @@
 ########################################################################################
-#                       Easy way to deploy Postgres & SQL Server                       #
+#                       Easy way to deploy Postgres, SQL Server, Mongo, Neo4j          #
 ########################################################################################
 
-
-
-########################################################################################
-networks:
-  analytics-network:
-    driver: bridge
-########################################################################################
-
-
-
-########################################################################################
 services:
   postgres:
     container_name: analytics-postgres-1
-    image: postgres:17
+    image: postgres:latest
     restart: always
     environment:
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
+      POSTGRES_PASSWORD: Password123
       POSTGRES_DB: postgres
     ports:
-      - "2345:5432"
+      - "5432:5432"
     volumes:
       - postgres-dev-db-volume:/var/lib/postgresql/data
-      # - ./postgresql.conf:/etc/postgresql/postgresql.conf
-      # - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
-    # command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
     networks:
       - analytics-network
 
   mssql:
     container_name: analytics-mssql-1
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:latest
     restart: always
     environment:
       ACCEPT_EULA: Y
-      SA_PASSWORD: P#ssword123
+      SA_PASSWORD: Password123
     ports:
-      - 3341:1433
+      - 1433:1433
     volumes:
       - mssql-dev-db-volume:/var/lib/mssql/data
     networks:
@@ -48,46 +34,66 @@ services:
 
   mongo:
     container_name: analytics-mongo-1
-    image: mongo
+    image: mongo:latest
     restart: always
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: P#ssword123
+      MONGO_INITDB_ROOT_PASSWORD: Password123
     ports:
       - 27017:27017
     volumes:
-      - mongo-dev-db-volume:/var/lib/mongo/data
+      - mongo-dev-db-volume:/data/db
     networks:
       - analytics-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongo-express:
     container_name: analytics-mongo-express-1
-    image: mongo-express
+    image: mongo-express:latest
     restart: always
     ports:
-      - 8020:8081
+      - 8081:8081
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-      ME_CONFIG_MONGODB_ADMINPASSWORD: P#ssword123
-      ME_CONFIG_MONGODB_URL: mongodb://admin:P#ssword123@mongo:27017/
-      ME_CONFIG_BASICAUTH: true # Enable Authentication
+      ME_CONFIG_MONGODB_ADMINPASSWORD: Password123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:Password123@mongo:27017/
+      ME_CONFIG_BASICAUTH: true
       ME_CONFIG_BASICAUTH_USERNAME: admin
-      ME_CONFIG_BASICAUTH_PASSWORD: tgbi123
+      ME_CONFIG_BASICAUTH_PASSWORD: Password123
+    networks:
+      - analytics-network
     depends_on:
-      - mongo
-########################################################################################
+      mongo:
+        condition: service_healthy
 
-
+  neo4j:
+    container_name: analytics-neo4j-1
+    image: neo4j:latest
+    restart: always
+    environment:
+      - NEO4J_AUTH=neo4j/Password123
+    ports:
+      - 7474:7474
+      - 7687:7687
+    volumes:
+      - neo4j-dev-db-volume:/data
+    networks:
+      - analytics-network
 
 ########################################################################################
 volumes:
   postgres-dev-db-volume:
   mssql-dev-db-volume:
   mongo-dev-db-volume:
+  neo4j-dev-db-volume:
 ########################################################################################
 
-
-
-# References
-# https://hub.docker.com/_/postgres
-# https://hub.docker.com/r/microsoft/mssql-server 
+########################################################################################
+networks:
+  analytics-network:
+    driver: bridge
+########################################################################################
