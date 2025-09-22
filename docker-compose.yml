@@ -3,12 +3,30 @@
 ########################################################################################
 
 services:
+  mysql:
+    container_name: analytics-mysql-1
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Password123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-dev-db-volume:/var/lib/mysql
+    networks:
+      - analytics-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   postgres:
     container_name: analytics-postgres-1
     image: postgres:latest
     restart: always
     environment:
-      POSTGRES_USER: admin
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: Password123
       POSTGRES_DB: postgres
     ports:
@@ -17,6 +35,29 @@ services:
       - postgres-dev-db-volume:/var/lib/postgresql/data
     networks:
       - analytics-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    container_name: analytics-pgadmin-1
+    image: elestio/pgadmin:latest
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@email.com
+      PGADMIN_DEFAULT_PASSWORD: Password123
+      PGADMIN_LISTEN_PORT: 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./servers.json:/pgadmin4/servers.json
+    networks:
+      - analytics-network
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   mssql:
     container_name: analytics-mssql-1
@@ -84,12 +125,81 @@ services:
     networks:
       - analytics-network
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.2
+    container_name: analytics-elasticsearch-1
+    restart: always
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=es-docker-cluster
+      - discovery.type=single-node   # 👈 mode single node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-dev-db-volume:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200   # API REST (clients, Kibana…)
+    networks:
+      - analytics-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.5.2
+    container_name: analytics-kibana-1
+    restart: always
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - 5601:5601
+    networks:
+      - analytics-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # cassandra:
+  #   container_name: analytics-cassandra-1
+  #   image: cassandra:latest
+  #   restart: always
+  #   environment:
+  #     - CASSANDRA_START_RPC=true       # default
+  #     - CASSANDRA_RPC_ADDRESS=0.0.0.0  # default
+  #     - CASSANDRA_LISTEN_ADDRESS=auto  # default, use IP addr of container # = CASSANDRA_BROADCAST_ADDRESS
+  #     - CASSANDRA_CLUSTER_NAME=AnalyticsCluster
+  #     - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+  #     - CASSANDRA_DC=DC1
+  #     - CASSANDRA_RACK=RAC1
+  #   ports:
+  #     - 7000:7000
+  #     - 9042:9042
+  #   volumes:
+  #     - cassandra-dev-db-volume:/var/lib/cassandra
+  #   networks:
+  #     - analytics-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "cqlsh -e 'describe cluster;'"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 60s
+
 ########################################################################################
 volumes:
+  mysql-dev-db-volume:
   postgres-dev-db-volume:
   mssql-dev-db-volume:
   mongo-dev-db-volume:
   neo4j-dev-db-volume:
+  elasticsearch-dev-db-volume:
+  # cassandra-dev-db-volume:
 ########################################################################################
 
 ########################################################################################
@@ -97,3 +207,20 @@ networks:
   analytics-network:
     driver: bridge
 ########################################################################################
+
+
+
+# References:
+# 1. MySQL: https://hub.docker.com/_/mysql
+# 2. Postgres: https://hub.docker.com/_/postgres
+# 3. PgAdmin: https://hub.docker.com/r/elestio/pgadmin
+# 4. MSSQL: https://hub.docker.com/_/microsoft-mssql-server
+# 5. MongoDB: https://hub.docker.com/_/mongo
+# 6. Neo4j: https://hub.docker.com/_/neo4j
+# 7. Cassandra: https://hub.docker.com/_/cassandra
+
+
+# docker exec -it --user root jupyterhub pip install elasticsearch==7.17.9
+# mongodb://admin:Password123@localhost:27017
+# neo4j://localhost:7687
+# https://www.elastic.co/guide/en/elasticsearch/reference/7.5/docker.html

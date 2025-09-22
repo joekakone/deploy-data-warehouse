@@ -17,3 +17,12 @@ caff70728cd4   mongo:latest                            "docker-entrypoint.s…" 
 011aa032130f   mcr.microsoft.com/mssql/server:latest   "/opt/mssql/bin/laun…"   2 minutes ago   Up 2 minutes             0.0.0.0:1433->1433/tcp, [::]:1433->1433/tcp                                                analytics-mssql-1
 83cd38af061c   neo4j:latest                            "tini -g -- /startup…"   2 minutes ago   Up 2 minutes             0.0.0.0:7474->7474/tcp, [::]:7474->7474/tcp, 0.0.0.0:7687->7687/tcp, [::]:7687->7687/tcp   analytics-neo4j-1
 ```
+
+
+## References
+1. Postgres: https://hub.docker.com/_/postgres
+2. SQL Server: https://hub.docker.com/_/microsoft-mssql-server
+3. MongoDB: https://hub.docker.com/_/mongo
+4. Mongo Express: https://hub.docker.com/r/mongoexpress/mongo-express
+5. Neo4j: https://hub.docker.com/_/neo4j
+6. Elasticsearch + Kibana: https://www.elastic.co/guide/en/elasticsearch/reference/
